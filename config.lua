@@ -15,6 +15,18 @@ Config.ProgressBar      = true
 Config.ShopLocation = vector3(0.0, 0.0, 0.0)   -- ← swap with your coords
 
 -- ─────────────────────────────────────────────
+--  RAMP LOCATIONS  (4 workspaces inside tuner shop)
+--  anyone can view prices, tuner job required to install
+-- ─────────────────────────────────────────────
+Config.RampLocations = {
+    vector3(0.0, 0.0, 0.0), -- ramp 1
+    vector3(0.0, 0.0, 0.0), -- ramp 2
+    vector3(0.0, 0.0, 0.0), -- ramp 3
+    vector3(0.0, 0.0, 0.0), -- ramp 4
+}
+Config.RampRadius = 8.0
+
+-- ─────────────────────────────────────────────
 --  BLIP
 -- ─────────────────────────────────────────────
 Config.Blip = {

@@ -394,6 +394,145 @@ local function OpenMenu(veh, state)
 end
 
 -- ─────────────────────────────────────────────
+--  RAMP MENU  — visible to all, install = tuner only
+-- ─────────────────────────────────────────────
+
+local function OpenRampMenu(veh, state)
+    local isTuner = HasTunerJob()
+    local opts    = {}
+
+    local function tunerOnly(label, fn)
+        if isTuner then
+            return fn
+        else
+            return function()
+                QBCore.Functions.Notify(Lang:t('ramp_not_tuner'), 'error', 4000)
+            end
+        end
+    end
+
+    -- ── PERFORMANCE ──────────────────────────
+    opts[#opts + 1] = { title = '━━━ Performance ━━━', disabled = true }
+
+    -- Engine Chip
+    if state.engine_chip then
+        opts[#opts + 1] = { title = '✅ Engine Chip (installed)', icon = 'microchip', disabled = true }
+    elseif state.drift_chip then
+        opts[#opts + 1] = { title = '🚫 Engine Chip (blocked — remove drift chip first)', icon = 'microchip', disabled = true }
+    else
+        opts[#opts + 1] = {
+            title       = 'Engine Chip  (+' .. Config.EngineChip.speedBoostMPH .. ' MPH)',
+            description = 'Base $' .. lib.math.groupdigits(Config.EngineChip.basePrice) .. ' + 30% car value · black money' .. (not isTuner and '  🔒 Tuner required' or ''),
+            icon        = 'microchip',
+            onSelect    = tunerOnly('Engine Chip', function() BuyEngineChip(veh) end),
+        }
+    end
+
+    -- Drift Chip
+    if state.drift_chip then
+        opts[#opts + 1] = { title = '✅ Drift Chip (installed)', icon = 'car', disabled = true }
+    elseif state.engine_chip then
+        opts[#opts + 1] = { title = '🚫 Drift Chip (blocked — remove engine chip first)', icon = 'car', disabled = true }
+    else
+        opts[#opts + 1] = {
+            title       = 'Drift Chip',
+            description = 'Base $' .. lib.math.groupdigits(Config.DriftChip.basePrice) .. ' + 20% car value · black money' .. (not isTuner and '  🔒 Tuner required' or ''),
+            icon        = 'car',
+            onSelect    = tunerOnly('Drift Chip', function() BuyDriftChip(veh) end),
+        }
+    end
+
+    -- Stance Kit
+    if state.has_stance then
+        opts[#opts + 1] = { title = '✅ Stance Kit (installed)', icon = 'sliders', disabled = true }
+    else
+        opts[#opts + 1] = {
+            title       = 'Stance Kit  ($' .. lib.math.groupdigits(Config.StanceKit.price) .. ')',
+            description = 'Camber · ride height · wheel distance' .. (not isTuner and '  🔒 Tuner required' or ''),
+            icon        = 'sliders',
+            onSelect    = tunerOnly('Stance Kit', function()
+                GetPassengerThenPurchase(veh, 'stance_kit', Config.StanceKit.installMs, 'Stance Kit', function(v)
+                    TriggerEvent('qb-illegaltuner:client:openStance', v)
+                end)
+            end),
+        }
+    end
+
+    -- ── NITROUS ──────────────────────────────
+    opts[#opts + 1] = { title = '━━━ Nitrous ━━━', disabled = true }
+
+    if state.nos then
+        if state.nos_ready then
+            opts[#opts + 1] = {
+                title       = 'Refill Nitrous  ($' .. lib.math.groupdigits(Config.Nitrous.refillPrice) .. ')',
+                description = 'Top up your NOS canister' .. (not isTuner and '  🔒 Tuner required' or ''),
+                icon        = 'fill-drip',
+                onSelect    = tunerOnly('Nitrous Refill', function()
+                    GetPassengerThenPurchase(veh, 'nitrous_refill', 3000, 'Nitrous Refill', function(v)
+                        TriggerEvent('qb-illegaltuner:client:nosRefilled', v)
+                    end)
+                end),
+            }
+        else
+            opts[#opts + 1] = { title = '⏳ NOS On Cooldown', description = 'Wait for cooldown to expire', icon = 'clock', disabled = true }
+        end
+    else
+        opts[#opts + 1] = {
+            title       = 'Install Nitrous Kit  ($' .. lib.math.groupdigits(Config.Nitrous.price) .. ')',
+            description = '+' .. Config.Nitrous.boostMPH .. ' MPH · 30 min cooldown · LEFT SHIFT' .. (not isTuner and '  🔒 Tuner required' or ''),
+            icon        = 'bolt',
+            onSelect    = tunerOnly('Nitrous Kit', function()
+                GetPassengerThenPurchase(veh, 'nitrous_kit', Config.Nitrous.installMs, 'Nitrous Kit', function(v)
+                    TriggerEvent('qb-illegaltuner:client:nosInstalled', v)
+                end)
+            end),
+        }
+    end
+
+    -- ── NEON ─────────────────────────────────
+    opts[#opts + 1] = { title = '━━━ Neon Kits ━━━', disabled = true }
+    local neonNote = (not isTuner and '  🔒 Tuner required' or '')
+
+    local neonItems = {
+        { key = 'neon_static',  label = 'Static Neon',  event = 'openNeonPicker', arg = 'static'  },
+        { key = 'neon_rainbow', label = 'Rainbow Neon', event = 'startRainbow',   arg = nil        },
+        { key = 'neon_rgb',     label = 'RGB Neon',     event = 'openNeonPicker', arg = 'rgb'      },
+        { key = 'neon_strobe',  label = 'Strobe Neon',  event = 'startStrobe',    arg = nil        },
+    }
+    local neonPriceMap = { neon_static = Config.NeonPrices.static, neon_rainbow = Config.NeonPrices.rainbow, neon_rgb = Config.NeonPrices.rgb, neon_strobe = Config.NeonPrices.strobe }
+
+    for _, n in ipairs(neonItems) do
+        local evtName = n.event
+        local evtArg  = n.arg
+        local prodKey = n.key
+        opts[#opts + 1] = {
+            title    = n.label .. '  ($' .. lib.math.groupdigits(neonPriceMap[prodKey]) .. ')' .. neonNote,
+            icon     = 'circle',
+            onSelect = tunerOnly(n.label, function()
+                GetPassengerThenPurchase(veh, prodKey, Config.NeonInstallMs, n.label, function(v)
+                    if evtArg then
+                        TriggerEvent('qb-illegaltuner:client:' .. evtName, v, evtArg)
+                    else
+                        TriggerEvent('qb-illegaltuner:client:' .. evtName, v)
+                    end
+                end)
+            end),
+        }
+    end
+
+    -- ── REMOVE MODS ──────────────────────────
+    opts[#opts + 1] = { title = '━━━ Management ━━━', disabled = true }
+    opts[#opts + 1] = {
+        title    = '🗑️ Remove Mods',
+        icon     = 'trash',
+        onSelect = tunerOnly('Remove Mods', function() OpenRemoveMenu(veh, state) end),
+    }
+
+    lib.registerContext({ id = 'illegaltuner_ramp', title = '🔧 Tuner Ramp', options = opts })
+    lib.showContext('illegaltuner_ramp')
+end
+
+-- ─────────────────────────────────────────────
 --  ZONE DETECTION  — using ox_lib zone
 -- ─────────────────────────────────────────────
 
@@ -448,6 +587,54 @@ lib.zones.sphere({
         inZone = false
     end,
 })
+
+-- ─────────────────────────────────────────────
+--  RAMP ZONE  — public access, tuner installs
+-- ─────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────
+--  RAMP ZONES  — 4 workspaces, public view / tuner install
+-- ─────────────────────────────────────────────
+
+local inRamp = false
+
+for _, rampCoords in ipairs(Config.RampLocations) do
+    lib.zones.sphere({
+        coords = rampCoords,
+        radius = Config.RampRadius,
+        onEnter = function()
+            local veh = GetDrivenVehicle()
+            if not veh then
+                QBCore.Functions.Notify(Lang:t('ramp_no_vehicle'), 'error', 4000)
+                return
+            end
+            inRamp = true
+
+            CreateThread(function()
+                while inRamp do
+                    BeginTextCommandDisplayHelp('STRING')
+                    AddTextComponentSubstringPlayerName(Lang:t('ramp_press_open'))
+                    EndTextCommandDisplayHelp(0, false, true, -1)
+
+                    if IsControlJustPressed(0, 51) then
+                        local v = GetDrivenVehicle()
+                        if not v then
+                            QBCore.Functions.Notify(Lang:t('ramp_no_vehicle'), 'error', 3000)
+                        else
+                            QBCore.Functions.TriggerCallback('qb-illegaltuner:server:getVehicleState', function(state)
+                                if state then OpenRampMenu(v, state) end
+                            end, NetworkGetNetworkIdFromEntity(v))
+                        end
+                    end
+                    Wait(500)
+                end
+            end)
+        end,
+        onExit = function()
+            inRamp = false
+        end,
+    })
+end
 
 -- ─────────────────────────────────────────────
 --  ON SPAWN — reapply all persistent mods

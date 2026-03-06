@@ -52,6 +52,12 @@ local Translations = {
     ['neon_removed']              = 'Neon kit removed.',
     ['neon_already']              = 'This vehicle already has a neon kit. Visit removal menu first.',
 
+    -- Ramp
+    ['ramp_press_open']       = 'Press ~INPUT_CONTEXT~ to view Tuner Menu',
+    ['ramp_tuner_only']       = 'Only a tuner can install mods. Prices shown for reference.',
+    ['ramp_no_vehicle']       = 'Drive your vehicle onto the ramp.',
+    ['ramp_not_tuner']        = 'You need a tuner to install this mod.',
+
     -- Removal (PD)
     ['remove_chip_no_perm']       = 'Only PD can remove engine chips.',
     ['remove_chip_success']       = 'Engine chip successfully removed from vehicle.',
