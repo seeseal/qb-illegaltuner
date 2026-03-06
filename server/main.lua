@@ -392,6 +392,38 @@ RegisterNetEvent('qb-illegaltuner:server:pdRemoveChip', function(netId)
 end)
 
 -- ─────────────────────────────────────────────
+--  /checkchip  — anyone can check nearest vehicle
+-- ─────────────────────────────────────────────
+
+QBCore.Commands.Add('checkchip', 'Check what chips are installed on the nearest vehicle', {}, false, function(source)
+    TriggerClientEvent('qb-illegaltuner:client:checkChip', source)
+end)
+
+RegisterNetEvent('qb-illegaltuner:server:checkChip', function(netId)
+    local src   = source
+    local veh   = NetworkGetEntityFromNetworkId(netId)
+    local plate = GetVehicleNumberPlateText(veh)
+    if not plate then
+        TriggerClientEvent('QBCore:Notify', src, 'Could not read vehicle plate.', 'error')
+        return
+    end
+    plate = plate:gsub('%s+', '')
+
+    local row = MySQL.single.await('SELECT * FROM illegaltuner_mods WHERE plate = ?', { plate })
+
+    local msg
+    if row and row.engine_chip == 1 then
+        msg = '🚗 Plate [' .. plate .. '] — 🔧 Engine Chip Installed'
+    elseif row and row.drift_chip == 1 then
+        msg = '🚗 Plate [' .. plate .. '] — 🔧 Drift Chip Installed'
+    else
+        msg = '🚗 Plate [' .. plate .. '] — 🔧 No Chip Installed'
+    end
+
+    TriggerClientEvent('QBCore:Notify', -1, msg, 'primary', 6000)
+end)
+
+-- ─────────────────────────────────────────────
 --  CLEANUP
 -- ─────────────────────────────────────────────
 
