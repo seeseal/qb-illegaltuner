@@ -98,12 +98,21 @@ local function OpenRemoveMenu(veh, state)
     local opts  = {}
 
     if state.engine_chip then
-        -- Engine chip can only be removed by PD via /removechip
         opts[#opts + 1] = {
-            title       = '🔧 Engine Chip',
-            description = 'Can only be removed by PD using /removechip',
-            icon        = 'microchip',
-            disabled    = true,
+            title    = '🔧 Remove Engine Chip',
+            icon     = 'microchip',
+            onSelect = function()
+                RunProgress(Lang:t('removing', { 'Engine Chip' }), Config.EngineChip.removeMs, function(ok)
+                    if not ok then return end
+                    QBCore.Functions.TriggerCallback('qb-illegaltuner:server:removeMod', function(result, reason)
+                        if not result then QBCore.Functions.Notify(reason, 'error', 4000) return end
+                        local cur   = GetVehicleHandlingFloat(veh, 'CHandlingData', 'fInitialDriveMaxFlatVel')
+                        local boost = Config.EngineChip.speedBoostMPH * 0.44704
+                        SetVehicleHandlingFloat(veh, 'CHandlingData', 'fInitialDriveMaxFlatVel', math.max(10.0, cur - boost))
+                        QBCore.Functions.Notify(Lang:t('engine_chip_removed'), 'success', 4000)
+                    end, netId, 'engine_chip')
+                end)
+            end,
         }
     end
 
@@ -486,8 +495,19 @@ AddEventHandler('qb-illegaltuner:client:reapplyMods', function(veh)
 end)
 
 -- ─────────────────────────────────────────────
---  PD /removechip — client side
+--  /checkchip  — find nearest vehicle and send to server
 -- ─────────────────────────────────────────────
+
+RegisterNetEvent('qb-illegaltuner:client:checkChip', function()
+    local ped    = PlayerPedId()
+    local coords = GetEntityCoords(ped)
+    local veh    = GetClosestVehicle(coords.x, coords.y, coords.z, 10.0, 0, 71)
+    if not veh or veh == 0 then
+        QBCore.Functions.Notify('No vehicle nearby.', 'error', 3000)
+        return
+    end
+    TriggerServerEvent('qb-illegaltuner:server:checkChip', NetworkGetNetworkIdFromEntity(veh))
+end)
 
 RegisterNetEvent('qb-illegaltuner:client:pdRemoveChipRequest', function()
     -- Find nearest vehicle within 5m

@@ -324,7 +324,10 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:removeMod', function(sou
 
     local row = GetOrCreateRow(plate)
 
-    if modKey == 'drift_chip' then
+    if modKey == 'engine_chip' then
+        if row.engine_chip ~= 1 then cb(false, Lang:t('engine_chip_no_chip')) return end
+        MySQL.update.await('UPDATE illegaltuner_mods SET engine_chip = 0 WHERE plate = ?', { plate })
+    elseif modKey == 'drift_chip' then
         if row.drift_chip ~= 1 then cb(false, Lang:t('drift_chip_no_chip')) return end
         MySQL.update.await('UPDATE illegaltuner_mods SET drift_chip = 0 WHERE plate = ?', { plate })
     elseif modKey == 'nos' then
@@ -420,7 +423,7 @@ RegisterNetEvent('qb-illegaltuner:server:checkChip', function(netId)
         msg = '🚗 Plate [' .. plate .. '] — 🔧 No Chip Installed'
     end
 
-    TriggerClientEvent('QBCore:Notify', -1, msg, 'primary', 6000)
+    TriggerClientEvent('QBCore:Notify', src, msg, 'primary', 6000)
 end)
 
 -- ─────────────────────────────────────────────

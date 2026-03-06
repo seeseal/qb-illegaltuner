@@ -6,13 +6,14 @@ An illegal tuner shop resource for **QBCore** FiveM servers. Players with the `t
 
 ## Features
 
-- **Engine Chip** — Adds +15 MPH top speed. Price is dynamically calculated server-side: base $250,000 + 30% of the vehicle's depot value. One install per vehicle — only removable by PD via `/removechip`.
+- **Engine Chip** — Adds +15 MPH top speed. Price is dynamically calculated server-side: base $250,000 + 30% of the vehicle's depot value. One install per vehicle — removable at the tuner shop or by PD via `/removechip`.
 - **Drift Chip** — Soft suspension and high traction loss for drifting. Mutually exclusive with the engine chip.
 - **Stance Kit** — Live arrow-key editor for camber, ride height, and wheel distance. Settings saved to DB and restored on spawn.
 - **Nitrous Kit** — +10 MPH burst for 10 seconds. One kit per vehicle, 30-minute cooldown enforced server-side. Must return to the shop to refill.
 - **Neon Kits** — Static, RGB, Rainbow, and Strobe modes. Colour and mode saved to DB and restored on spawn.
-- **Removal Menu** — All mods (except engine chip) can be removed at the shop by the tuner.
+- **Removal Menu** — All mods including engine chip can be removed at the tuner shop.
 - **Persistent mods** — All installations survive reconnects and server restarts.
+- **Menu reflects installed state** — Shows ✅ if installed, 🚫 if blocked by a conflicting mod.
 - **QBCore logs + Discord webhook** — Every purchase and removal is logged.
 
 ---
@@ -66,11 +67,12 @@ All prices, boost values, cooldowns, neon colours, and progress bar durations ar
 
 ---
 
-## PD Command
+## Commands
 
 | Command | Job Required | Description |
 |---|---|---|
 | `/removechip` | police | Removes an illegal engine chip from the nearest vehicle |
+| `/checkchip` | anyone | Shows you what chip is installed on the nearest vehicle |
 
 ---
 
