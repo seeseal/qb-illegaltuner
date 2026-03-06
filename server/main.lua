@@ -41,7 +41,6 @@ end
 
 local function GetServerPrice(productKey)
     local prices = {
-        drift_chip     = Config.DriftChip.price,
         stance_kit     = Config.StanceKit.price,
         nitrous_kit    = Config.Nitrous.price,
         nitrous_refill = Config.Nitrous.refillPrice,
@@ -162,6 +161,21 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:getEngineChipPrice', fun
     cb(price, depotValue, bonus)
 end)
 
+QBCore.Functions.CreateCallback('qb-illegaltuner:server:getDriftChipPrice', function(source, cb, netId)
+    local veh   = NetworkGetEntityFromNetworkId(netId)
+    local plate = GetVehicleNumberPlateText(veh)
+    if not plate then cb(Config.DriftChip.basePrice) return end
+    plate = plate:gsub('%s+', '')
+
+    local result = MySQL.single.await(
+        'SELECT depotprice FROM player_vehicles WHERE plate = ?', { plate }
+    )
+    local depotValue = result and result.depotprice or 0
+    local bonus = math.floor(depotValue * Config.DriftChip.carValuePercent)
+    local price = Config.DriftChip.basePrice + bonus
+    cb(price, depotValue, bonus)
+end)
+
 -- ─────────────────────────────────────────────
 --  PURCHASE CALLBACK
 -- ─────────────────────────────────────────────
@@ -210,13 +224,19 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:purchase', function(sour
     -- ── Price ────────────────────────────────────────
     local price
     if productKey == 'engine_chip' then
-        -- Recalculate entirely server-side — never trust clientPrice
         local result = MySQL.single.await(
             'SELECT depotprice FROM player_vehicles WHERE plate = ?', { plate }
         )
         local depotValue = result and result.depotprice or 0
         local bonus = math.floor(depotValue * Config.EngineChip.carValuePercent)
         price = Config.EngineChip.basePrice + bonus
+    elseif productKey == 'drift_chip' then
+        local result = MySQL.single.await(
+            'SELECT depotprice FROM player_vehicles WHERE plate = ?', { plate }
+        )
+        local depotValue = result and result.depotprice or 0
+        local bonus = math.floor(depotValue * Config.DriftChip.carValuePercent)
+        price = Config.DriftChip.basePrice + bonus
     else
         price = GetServerPrice(productKey)
         if not price then

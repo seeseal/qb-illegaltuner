@@ -46,7 +46,8 @@ Config.EngineChip = {
 --  DRIFT CHIP
 -- ─────────────────────────────────────────────
 Config.DriftChip = {
-    price              = 20000,
+    basePrice          = 100000,
+    carValuePercent    = 0.20,   -- price = basePrice + (depotvalue * 20%)
     installMs          = 6000,
     removeMs           = 5000,
     tractionMultiplier = 1.45,
@@ -57,7 +58,7 @@ Config.DriftChip = {
 --  STANCE KIT
 -- ─────────────────────────────────────────────
 Config.StanceKit = {
-    price          = 15000,
+    price          = 50000,
     installMs      = 7000,
     removeMs       = 5000,
     camberStep     = 0.01,
@@ -72,7 +73,7 @@ Config.StanceKit = {
 --  NITROUS
 -- ─────────────────────────────────────────────
 Config.Nitrous = {
-    price         = 30000,
+    price         = 50000,
     refillPrice   = 25000,
     installMs     = 9000,
     removeMs      = 7000,
@@ -86,10 +87,10 @@ Config.Nitrous = {
 --  NEON KITS
 -- ─────────────────────────────────────────────
 Config.NeonPrices = {
-    static  = 5000,
-    rainbow = 8000,
-    rgb     = 10000,
-    strobe  = 9000,
+    static  = 25000,
+    rainbow = 25000,
+    rgb     = 25000,
+    strobe  = 25000,
 }
 Config.NeonInstallMs = 4000
 Config.NeonRemoveMs  = 3000

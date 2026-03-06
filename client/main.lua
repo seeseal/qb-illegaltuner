@@ -195,6 +195,34 @@ local function OpenRemoveMenu(veh, state)
 end
 
 -- ─────────────────────────────────────────────
+--  DRIFT CHIP  (dynamic price)
+-- ─────────────────────────────────────────────
+
+local function BuyDriftChip(veh)
+    local netId = NetworkGetNetworkIdFromEntity(veh)
+    QBCore.Functions.TriggerCallback('qb-illegaltuner:server:getDriftChipPrice', function(price, depotValue, bonus)
+        lib.alertDialog({
+            header   = '🚗 Drift Chip',
+            content  = string.format(
+                'Soft suspension + high traction loss for drifting.\n\n💵 Cost: **$%s black money**\n_(Base $%s + 20%% car value $%s)_',
+                lib.math.groupdigits(price),
+                lib.math.groupdigits(Config.DriftChip.basePrice),
+                lib.math.groupdigits(bonus)
+            ),
+            centered = true,
+            cancel   = true,
+        }, function(confirmed)
+            if not confirmed then return end
+            GetPassengerThenPurchase(veh, 'drift_chip', Config.DriftChip.installMs, 'Drift Chip', function(v)
+                SetVehicleSuspensionUpgrade(v, Config.DriftChip.suspensionLevel)
+                SetVehicleHandlingFloat(v, 'CHandlingData', 'fTractionLossMulti', Config.DriftChip.tractionMultiplier)
+                QBCore.Functions.Notify(Lang:t('drift_chip_installed'), 'success', 4000)
+            end)
+        end)
+    end, netId)
+end
+
+-- ─────────────────────────────────────────────
 --  MAIN MENU  — reflects installed state
 -- ─────────────────────────────────────────────
 
@@ -245,16 +273,10 @@ local function OpenMenu(veh, state)
         }
     else
         opts[#opts + 1] = {
-            title       = 'Drift Chip  ($' .. Config.DriftChip.price .. ')',
-            description = 'Soft suspension + high traction loss for drifting',
+            title       = 'Drift Chip  ($' .. Config.DriftChip.basePrice .. ' + 20% car value)',
+            description = 'Soft suspension + high traction loss for drifting · black money',
             icon        = 'car',
-            onSelect    = function()
-                GetPassengerThenPurchase(veh, 'drift_chip', Config.DriftChip.installMs, 'Drift Chip', function(v)
-                    SetVehicleSuspensionUpgrade(v, Config.DriftChip.suspensionLevel)
-                    SetVehicleHandlingFloat(v, 'CHandlingData', 'fTractionLossMulti', Config.DriftChip.tractionMultiplier)
-                    QBCore.Functions.Notify(Lang:t('drift_chip_installed'), 'success', 4000)
-                end)
-            end,
+            onSelect    = function() BuyDriftChip(veh) end,
         }
     end
 
