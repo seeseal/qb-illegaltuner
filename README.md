@@ -7,13 +7,14 @@ An illegal tuner shop resource for **QBCore** FiveM servers. Players with the `t
 ## Features
 
 - **Engine Chip** — Adds +15 MPH top speed. Price is dynamically calculated server-side: base $250,000 + 30% of the vehicle's depot value. One install per vehicle — removable at the tuner shop or by PD via `/removechip`.
-- **Drift Chip** — Soft suspension and high traction loss for drifting. Mutually exclusive with the engine chip.
-- **Stance Kit** — Live arrow-key editor for camber, ride height, and wheel distance. Settings saved to DB and restored on spawn.
-- **Nitrous Kit** — +10 MPH burst for 10 seconds. One kit per vehicle, 30-minute cooldown enforced server-side. Must return to the shop to refill.
-- **Neon Kits** — Static, RGB, Rainbow, and Strobe modes. Colour and mode saved to DB and restored on spawn.
-- **Removal Menu** — All mods including engine chip can be removed at the tuner shop.
+- **Drift Chip** — Base $100,000 + 20% of car depot value. Soft suspension and high traction loss for drifting. Mutually exclusive with the engine chip.
+- **Stance Kit** — $50,000. Live arrow-key editor for camber, ride height, and wheel distance. Settings saved to DB and restored on spawn.
+- **Nitrous Kit** — $50,000 install, $25,000 refill. +10 MPH burst for 10 seconds. One kit per vehicle, 30-minute cooldown enforced server-side. Must return to the shop to refill.
+- **Neon Kits** — $25,000 each. Static, RGB, Rainbow, and Strobe modes. Colour and mode saved to DB and restored on spawn.
+- **4 Ramp Zones** — Anyone can drive into the tuner shop and view prices. Only the tuner job can install mods.
+- **Removal Menu** — All mods including engine chip can be removed at the tuner shop by a tuner.
 - **Persistent mods** — All installations survive reconnects and server restarts.
-- **Menu reflects installed state** — Shows ✅ if installed, 🚫 if blocked by a conflicting mod.
+- **Menu reflects installed state** — Shows ✅ if installed, 🚫 if blocked by a conflicting mod, 🔒 if tuner required.
 - **QBCore logs + Discord webhook** — Every purchase and removal is logged.
 
 ---
@@ -41,14 +42,20 @@ An illegal tuner shop resource for **QBCore** FiveM servers. Players with the `t
 
 Open `config.lua` and update the following:
 
-### Shop Location
+### Ramp Locations
 ```lua
-Config.ShopLocation = vector3(0.0, 0.0, 0.0)   -- replace with your coords
+Config.RampLocations = {
+    vector3(0.0, 0.0, 0.0), -- ramp 1
+    vector3(0.0, 0.0, 0.0), -- ramp 2
+    vector3(0.0, 0.0, 0.0), -- ramp 3
+    vector3(0.0, 0.0, 0.0), -- ramp 4
+}
 ```
+Set these to the 4 workspace spots inside your tuner shop.
 
 ### Jobs
 ```lua
-Config.RequiredJob = 'tuner'   -- job required to open the shop
+Config.RequiredJob = 'tuner'   -- job required to install mods
 Config.PDJob       = 'police'  -- job allowed to use /removechip
 ```
 
@@ -64,6 +71,18 @@ Config.PaymentType = 'black_money'  -- QBCore item name used for payment
 ```
 
 All prices, boost values, cooldowns, neon colours, and progress bar durations are also configurable in `config.lua`.
+
+---
+
+## Pricing
+
+| Mod | Price |
+|---|---|
+| Engine Chip | $250,000 base + 30% car depot value |
+| Drift Chip | $100,000 base + 20% car depot value |
+| Stance Kit | $50,000 |
+| Nitrous Kit | $50,000 install · $25,000 refill |
+| Neon (all types) | $25,000 |
 
 ---
 
