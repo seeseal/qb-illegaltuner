@@ -4,17 +4,24 @@ An illegal tuner shop resource for **QBCore** FiveM servers. Players with the `t
 
 ---
 
+## Preview
+
+> Custom HTML UI replaces the default ox_lib context menu for a fully themed shop experience, with a dedicated NOS HUD displaying live canister status, cooldown timers, and boost progress.
+
+---
+
 ## Features
 
-- **Engine Chip** — Adds +15 MPH top speed. Price is dynamically calculated server-side: base $250,000 + 30% of the vehicle's depot value. One install per vehicle — removable at the tuner shop or by PD via `/removechip`.
-- **Drift Chip** — Base $100,000 + 20% of car depot value. Soft suspension and high traction loss for drifting. Mutually exclusive with the engine chip.
+- **Engine Chip** — +15% top speed. Price is dynamically calculated server-side: base $250,000 + 30% of the vehicle's depot value. One install per vehicle — removable at the tuner shop or by PD via `/removechip`. Mutually exclusive with Drift Chip.
+- **Drift Chip** — Base $100,000 + 20% of car depot value. Soft suspension and high traction loss for drifting. Mutually exclusive with Engine Chip.
 - **Stance Kit** — $50,000. Live arrow-key editor for camber, ride height, and wheel distance. Settings saved to DB and restored on spawn.
-- **Nitrous Kit** — $50,000 install, $25,000 refill. +10 MPH burst for 10 seconds. One kit per vehicle, 30-minute cooldown enforced server-side. Must return to the shop to refill.
+- **Nitrous Kit** — $50,000 install, $25,000 refill. +10 MPH burst for 5 seconds with a torque surge. One kit per vehicle, 30-minute cooldown enforced server-side. Must return to the refill station to recharge.
 - **Neon Kits** — $25,000 each. Static, RGB, Rainbow, and Strobe modes. Colour and mode saved to DB and restored on spawn.
-- **4 Ramp Zones** — Anyone can drive into the tuner shop and view prices. Only the tuner job can install mods.
-- **Removal Menu** — All mods including engine chip can be removed at the tuner shop by a tuner.
-- **Persistent mods** — All installations survive reconnects and server restarts.
-- **Menu reflects installed state** — Shows ✅ if installed, 🚫 if blocked by a conflicting mod, 🔒 if tuner required.
+- **4 Ramp Zones** — Anyone can drive in and view prices. Only the `tuner` job can install mods.
+- **Removal Menu** — All mods including the engine chip can be removed at the tuner shop by a tuner.
+- **Persistent Mods** — All installations survive reconnects and server restarts.
+- **Custom HTML UI** — Fully themed shop menu with live installed state indicators.
+- **NOS HUD** — Bottom-right overlay showing canister charge, active burn progress, and cooldown timer.
 - **QBCore logs + Discord webhook** — Every purchase and removal is logged.
 
 ---
@@ -34,13 +41,11 @@ An illegal tuner shop resource for **QBCore** FiveM servers. Players with the `t
 1. Drop the `qb-illegaltuner` folder into your server's `resources` directory.
 2. Add `ensure qb-illegaltuner` to your `server.cfg`.
 3. The database table (`illegaltuner_mods`) is created automatically on first start.
-4. Configure the resource in `config.lua` (see below).
+4. Configure the resource in `config.lua`.
 
 ---
 
 ## Configuration
-
-Open `config.lua` and update the following:
 
 ### Ramp Locations
 ```lua
@@ -51,7 +56,7 @@ Config.RampLocations = {
     vector3(0.0, 0.0, 0.0), -- ramp 4
 }
 ```
-Set these to the 4 workspace spots inside your tuner shop.
+Set these to the workspace spots inside your tuner shop.
 
 ### Jobs
 ```lua
@@ -67,10 +72,10 @@ Leave as `''` to disable Discord logging.
 
 ### Payment
 ```lua
-Config.PaymentType = 'black_money'  -- QBCore item name used for payment
+Config.PaymentType = 'dirty_cash'  -- QBCore item name used for payment
 ```
 
-All prices, boost values, cooldowns, neon colours, and progress bar durations are also configurable in `config.lua`.
+All prices, boost values, cooldowns, neon colours, and progress bar durations are configurable in `config.lua`.
 
 ---
 
@@ -82,7 +87,20 @@ All prices, boost values, cooldowns, neon colours, and progress bar durations ar
 | Drift Chip | $100,000 base + 20% car depot value |
 | Stance Kit | $50,000 |
 | Nitrous Kit | $50,000 install · $25,000 refill |
-| Neon (all types) | $25,000 |
+| Neon (all types) | $25,000 each |
+
+---
+
+## Required Items
+
+The following items must exist in your QBCore shared items. Images are included in the `Dependencies/` folder.
+
+| Item | Used For |
+|---|---|
+| `s3_chip` | Engine Chip install |
+| `drift_chip` | Drift Chip install |
+| `stance_rod` | Stance Kit install |
+| `dirty_cash` | Payment (or configure your own) |
 
 ---
 
@@ -91,7 +109,7 @@ All prices, boost values, cooldowns, neon colours, and progress bar durations ar
 | Command | Job Required | Description |
 |---|---|---|
 | `/removechip` | police | Removes an illegal engine chip from the nearest vehicle |
-| `/checkchip` | anyone | Shows you what chip is installed on the nearest vehicle |
+| `/checkchip` | anyone | Shows what chip is installed on the nearest vehicle |
 
 ---
 
