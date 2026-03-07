@@ -5,6 +5,12 @@ author 'YourServer'
 description 'QBCore Illegal Tuner Shop'
 version '3.0.0'
 
+ui_page 'html/index.html'
+
+files {
+    'html/index.html',
+}
+
 shared_scripts {
     '@ox_lib/init.lua',
     '@qb-core/shared/locale.lua',
@@ -13,6 +19,7 @@ shared_scripts {
 }
 
 client_scripts {
+    'client/ui.lua',
     'client/main.lua',
     'client/stance.lua',
     'client/nitrous.lua',

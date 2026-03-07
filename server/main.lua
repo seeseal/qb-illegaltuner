@@ -18,6 +18,7 @@ MySQL.ready(function()
             drift_chip  TINYINT(1)   NOT NULL DEFAULT 0,
             nos         TINYINT(1)   NOT NULL DEFAULT 0,
             nos_cooldown BIGINT      NOT NULL DEFAULT 0,
+            nos_empty   TINYINT(1)   NOT NULL DEFAULT 0,
             nos_active  TINYINT(1)   NOT NULL DEFAULT 0,
             neon_mode   VARCHAR(16)  DEFAULT NULL,
             neon_r      TINYINT UNSIGNED DEFAULT NULL,
@@ -28,6 +29,11 @@ MySQL.ready(function()
             stance_wheeldist   FLOAT DEFAULT NULL,
             PRIMARY KEY (plate)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+    -- Add nos_empty column to existing tables that predate this column
+    MySQL.query([[
+        ALTER TABLE illegaltuner_mods
+        ADD COLUMN IF NOT EXISTS nos_empty TINYINT(1) NOT NULL DEFAULT 0;
     ]])
 end)
 
@@ -127,14 +133,17 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:getVehicleState', functi
     local row = GetOrCreateRow(plate)
     local nowSec = os.time()
     local nosReady = (row.nos_cooldown or 0) <= nowSec
+    local nosCooldownRemaining = math.max(0, (row.nos_cooldown or 0) - nowSec)
     cb({
-        engine_chip  = row.engine_chip  == 1,
-        drift_chip   = row.drift_chip   == 1,
-        nos          = row.nos          == 1,
-        nos_ready    = nosReady,
-        neon_mode    = row.neon_mode,
-        has_stance   = row.stance_camber ~= nil,
-        stance       = {
+        engine_chip        = row.engine_chip  == 1 or row.engine_chip  == true,
+        drift_chip         = row.drift_chip   == 1 or row.drift_chip   == true,
+        nos                = row.nos          == 1 or row.nos          == true,
+        nos_ready          = nosReady,
+        nos_empty          = row.nos_empty    == 1 or row.nos_empty    == true,
+        nos_cooldown_until = nosCooldownRemaining,
+        neon_mode          = row.neon_mode,
+        has_stance         = row.stance_camber ~= nil,
+        stance             = {
             camber    = row.stance_camber,
             height    = row.stance_height,
             wheeldist = row.stance_wheeldist,
@@ -203,15 +212,28 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:purchase', function(sour
     local row = GetOrCreateRow(plate)
 
     if productKey == 'engine_chip' then
-        if row.engine_chip == 1 then cb(false, Lang:t('engine_chip_already')) return end
-        if row.drift_chip  == 1 then cb(false, Lang:t('engine_chip_conflict')) return end
+        if row.engine_chip == 1 or row.engine_chip == true then cb(false, Lang:t('engine_chip_already')) return end
+        if row.drift_chip  == 1 or row.drift_chip  == true then cb(false, Lang:t('engine_chip_conflict')) return end
+        local chipItem = Driver.Functions.GetItemByName('s3_chip')
+        if not chipItem or chipItem.amount < 1 then
+            cb(false, '🔧 You need an S3 Chip item in your inventory to install this.') return
+        end
     elseif productKey == 'drift_chip' then
-        if row.drift_chip  == 1 then cb(false, Lang:t('drift_chip_already')) return end
-        if row.engine_chip == 1 then cb(false, Lang:t('drift_chip_conflict')) return end
+        if row.drift_chip  == 1 or row.drift_chip  == true then cb(false, Lang:t('drift_chip_already')) return end
+        if row.engine_chip == 1 or row.engine_chip == true then cb(false, Lang:t('drift_chip_conflict')) return end
+        local driftItem = Driver.Functions.GetItemByName('drift_chip')
+        if not driftItem or driftItem.amount < 1 then
+            cb(false, '🏎️ You need a Drift Chip item in your inventory to install this.') return
+        end
+    elseif productKey == 'stance_kit' then
+        local rodItem = Driver.Functions.GetItemByName('stance_rod')
+        if not rodItem or rodItem.amount < 1 then
+            cb(false, '📐 You need a Stance Rod item in your inventory to install this.') return
+        end
     elseif productKey == 'nitrous_kit' then
-        if row.nos == 1 then cb(false, Lang:t('nos_already')) return end
+        if row.nos == 1 or row.nos == true then cb(false, Lang:t('nos_already')) return end
     elseif productKey == 'nitrous_refill' then
-        if row.nos ~= 1 then cb(false, Lang:t('nos_not_installed')) return end
+        if not (row.nos == 1 or row.nos == true) then cb(false, Lang:t('nos_not_installed')) return end
         local nowSec = os.time()
         if (row.nos_cooldown or 0) > nowSec then
             local remaining = math.ceil((row.nos_cooldown - nowSec) / 60)
@@ -251,8 +273,10 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:purchase', function(sour
     local balance = item and item.amount or 0
 
     if balance < price then
-        local name = CharName(Payer)
-        cb(false, Lang:t('no_funds', { name, price })) return
+        local shortfall = price - balance
+        local payerName = CharName(Payer)
+        local whoLabel  = (Payer.PlayerData.source == src) and 'You are' or (payerName .. ' is')
+        cb(false, '💸 Insufficient balance — ' .. whoLabel .. ' short $' .. lib.math.groupdigits(shortfall) .. ' dirty cash.') return
     end
 
     Payer.Functions.RemoveItem(Config.PaymentType, price)
@@ -264,8 +288,16 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:purchase', function(sour
     -- ── DB write ─────────────────────────────────────
     if productKey == 'engine_chip' then
         MySQL.update.await('UPDATE illegaltuner_mods SET engine_chip = 1 WHERE plate = ?', { plate })
+        Driver.Functions.RemoveItem('s3_chip', 1)
+        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items['s3_chip'], 'remove')
     elseif productKey == 'drift_chip' then
         MySQL.update.await('UPDATE illegaltuner_mods SET drift_chip = 1 WHERE plate = ?', { plate })
+        Driver.Functions.RemoveItem('drift_chip', 1)
+        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items['drift_chip'], 'remove')
+    elseif productKey == 'stance_kit' then
+        MySQL.update.await('UPDATE illegaltuner_mods SET stance_kit = 1 WHERE plate = ?', { plate })
+        Driver.Functions.RemoveItem('stance_rod', 1)
+        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items['stance_rod'], 'remove')
     elseif productKey == 'nitrous_kit' then
         MySQL.update.await('UPDATE illegaltuner_mods SET nos = 1, nos_cooldown = 0 WHERE plate = ?', { plate })
     elseif productKey == 'nitrous_refill' then
@@ -282,6 +314,55 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:purchase', function(sour
 end)
 
 -- ─────────────────────────────────────────────
+--  NOS REFILL STATION  — no job required, cooldown enforced
+-- ─────────────────────────────────────────────
+
+QBCore.Functions.CreateCallback('qb-illegaltuner:server:nosStationRefill', function(source, cb, netId)
+    local src    = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then cb(false, Lang:t('transaction_failed')) return end
+
+    local veh   = NetworkGetEntityFromNetworkId(netId)
+    local plate = GetVehicleNumberPlateText(veh)
+    if not plate then cb(false, Lang:t('transaction_failed')) return end
+    plate = plate:gsub('%s+', '')
+
+    local row = MySQL.single.await('SELECT * FROM illegaltuner_mods WHERE plate = ?', { plate })
+
+    if not row or not (row.nos == 1 or row.nos == true) then
+        cb(false, Lang:t('nos_not_installed')) return
+    end
+
+    local nowSec = os.time()
+    if (row.nos_cooldown or 0) > nowSec then
+        local remaining = math.ceil((row.nos_cooldown - nowSec) / 60)
+        cb(false, Lang:t('nos_cooldown', { remaining })) return
+    end
+
+    local price = Config.Nitrous.refillPrice
+    local item    = Player.Functions.GetItemByName(Config.PaymentType)
+    local balance = item and item.amount or 0
+
+    if balance < price then
+        local shortfall = price - balance
+        cb(false, '💸 Short $' .. lib.math.groupdigits(shortfall) .. ' dirty cash.') return
+    end
+
+    Player.Functions.RemoveItem(Config.PaymentType, price)
+    TriggerClientEvent('inventory:client:ItemBox', src,
+        QBCore.Shared.Items[Config.PaymentType], 'remove')
+
+    -- Cooldown resets to 0, nos_empty cleared — canister is full again
+    MySQL.update.await('UPDATE illegaltuner_mods SET nos_cooldown = 0, nos_empty = 0 WHERE plate = ?', { plate })
+
+    local logMsg = string.format('**%s** refilled NOS on plate **%s** at station | $%d',
+        CharName(Player), plate, price)
+    QBLog('illegaltuner', 'NOS Refill (Station)', logMsg, src)
+
+    cb(true, price)
+end)
+
+-- ─────────────────────────────────────────────
 --  NOS COOLDOWN  — set when NOS fires
 -- ─────────────────────────────────────────────
 
@@ -291,7 +372,7 @@ RegisterNetEvent('qb-illegaltuner:server:nosUsed', function(netId)
     if not plate then return end
     plate = plate:gsub('%s+', '')
     local cooldownUntil = os.time() + Config.Nitrous.cooldown
-    MySQL.update.await('UPDATE illegaltuner_mods SET nos_cooldown = ? WHERE plate = ?',
+    MySQL.update.await('UPDATE illegaltuner_mods SET nos_cooldown = ?, nos_empty = 1 WHERE plate = ?',
         { cooldownUntil, plate })
 end)
 
@@ -345,13 +426,13 @@ QBCore.Functions.CreateCallback('qb-illegaltuner:server:removeMod', function(sou
     local row = GetOrCreateRow(plate)
 
     if modKey == 'engine_chip' then
-        if row.engine_chip ~= 1 then cb(false, Lang:t('engine_chip_no_chip')) return end
+        if not (row.engine_chip == 1 or row.engine_chip == true) then cb(false, Lang:t('engine_chip_no_chip')) return end
         MySQL.update.await('UPDATE illegaltuner_mods SET engine_chip = 0 WHERE plate = ?', { plate })
     elseif modKey == 'drift_chip' then
-        if row.drift_chip ~= 1 then cb(false, Lang:t('drift_chip_no_chip')) return end
+        if not (row.drift_chip == 1 or row.drift_chip == true) then cb(false, Lang:t('drift_chip_no_chip')) return end
         MySQL.update.await('UPDATE illegaltuner_mods SET drift_chip = 0 WHERE plate = ?', { plate })
     elseif modKey == 'nos' then
-        if row.nos ~= 1 then cb(false, Lang:t('nos_not_installed')) return end
+        if not (row.nos == 1 or row.nos == true) then cb(false, Lang:t('nos_not_installed')) return end
         MySQL.update.await('UPDATE illegaltuner_mods SET nos = 0, nos_cooldown = 0 WHERE plate = ?', { plate })
     elseif modKey == 'neon' then
         MySQL.update.await(
@@ -434,10 +515,15 @@ RegisterNetEvent('qb-illegaltuner:server:checkChip', function(netId)
 
     local row = MySQL.single.await('SELECT * FROM illegaltuner_mods WHERE plate = ?', { plate })
 
+    print('[qb-illegaltuner] checkchip plate=' .. plate .. ' row=' .. json.encode(row))
+
+    local hasEngine = row and (row.engine_chip == 1 or row.engine_chip == true)
+    local hasDrift  = row and (row.drift_chip  == 1 or row.drift_chip  == true)
+
     local msg
-    if row and row.engine_chip == 1 then
+    if hasEngine then
         msg = '🚗 Plate [' .. plate .. '] — 🔧 Engine Chip Installed'
-    elseif row and row.drift_chip == 1 then
+    elseif hasDrift then
         msg = '🚗 Plate [' .. plate .. '] — 🔧 Drift Chip Installed'
     else
         msg = '🚗 Plate [' .. plate .. '] — 🔧 No Chip Installed'

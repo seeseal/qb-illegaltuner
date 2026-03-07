@@ -1,0 +1,7 @@
+ -- Illegal Tuner
+    s3_chip    = { name = 's3_chip',    label = 'S3 Chip',    weight = 100, type = 'item', image = 's3_chip.png',    unique = false, useable = false, shouldClose = false, combinable = nil, description = 'An illegal Stage 3 engine performance chip.' },
+    drift_chip = { name = 'drift_chip', label = 'Drift Chip', weight = 100, type = 'item', image = 'drift_chip.png', unique = false, useable = false, shouldClose = false, combinable = nil, description = 'An illegal traction control override chip. Makes the rear break loose.' },
+    stance_rod = { name = 'stance_rod', label = 'Stance Rod', weight = 200, type = 'item', image = 'stance_rod.png', unique = false, useable = false, shouldClose = false, combinable = nil, description = 'A suspension adjustment rod used to modify camber and ride height.' },
+    dirty_cash = { name = 'dirty_cash', label = 'Dirty Cash', weight = 0,  type = 'item', image = 'dirty_cash.png', unique = false, useable = false, shouldClose = false, combinable = nil, description = 'Illegally obtained cash.' },
+
+}

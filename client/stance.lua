@@ -1,154 +1,157 @@
 -- ╔══════════════════════════════════════════════╗
 -- ║    qb-illegaltuner  |  client/stance.lua    ║
 -- ╚══════════════════════════════════════════════╝
+-- Live stance editor — arrow keys, real-time preview.
+-- No wheel natives used; all via CHandlingData / CCarHandlingData.
 
 local QBCore       = exports['qb-core']:GetCoreObject()
 local stanceActive = false
 
-local function Clamp(val, min, max)
-    return math.max(min, math.min(max, val))
+local stanceCamberF   = 0.0
+local stanceCamberR   = 0.0
+local stanceHeight    = 0.0
+
+-- ─────────────────────────────────────────────
+--  HELPERS
+-- ─────────────────────────────────────────────
+
+local function Clamp(v, mn, mx) return math.max(mn, math.min(mx, v)) end
+
+local function ApplyStance(veh, camberF, camberR, height)
+    SetVehicleHandlingFloat(veh, 'CHandlingData',    'fSuspensionRaise', height)
+    SetVehicleHandlingFloat(veh, 'CCarHandlingData', 'fCamberFront',     camberF)
+    SetVehicleHandlingFloat(veh, 'CCarHandlingData', 'fCamberRear',      camberR)
 end
 
-local function ApplyStance(veh, camber, rideHeight, wheelDist)
-    for wheel = 0, 3 do
-        SetVehicleWheelYOffset(veh, wheel, wheelDist)
-        SetVehicleWheelCamber(veh, wheel, (wheel % 2 == 0) and -camber or camber)
-    end
-    SetVehicleHandlingFloat(veh, 'CHandlingData', 'fSuspensionRaise', rideHeight)
-end
-
-local function DrawHUD(camber, rideHeight, wheelDist)
-    local lines = {
-        string.format('~b~↑↓~w~  Ride Height:  ~y~%.3f', rideHeight),
-        string.format('~b~←→~w~  Camber:       ~y~%.3f', camber),
-        string.format('~b~SHIFT+←→~w~  Wheel Dist:  ~y~%.3f', wheelDist),
-        '~g~ENTER~w~ save   ~r~BACKSPACE~w~ cancel   ~o~ESC~w~ confirm exit',
-    }
-    for i, line in ipairs(lines) do
-        SetTextFont(4)
-        SetTextScale(0.35, 0.35)
-        SetTextColour(255, 255, 255, 220)
-        SetTextOutline()
-        BeginTextCommandDisplayText('STRING')
-        AddTextComponentSubstringPlayerName(line)
-        EndTextCommandDisplayText(0.02, 0.84 + (i - 1) * 0.04)
-    end
-end
-
--- Resets vehicle to neutral stance
 local function ClearStance(veh)
-    for wheel = 0, 3 do
-        SetVehicleWheelYOffset(veh, wheel, 0.0)
-        SetVehicleWheelCamber(veh, wheel, 0.0)
-    end
-    SetVehicleHandlingFloat(veh, 'CHandlingData', 'fSuspensionRaise', 0.0)
+    SetVehicleHandlingFloat(veh, 'CHandlingData',    'fSuspensionRaise', 0.0)
+    SetVehicleHandlingFloat(veh, 'CCarHandlingData', 'fCamberFront',     0.0)
+    SetVehicleHandlingFloat(veh, 'CCarHandlingData', 'fCamberRear',      0.0)
 end
 
-AddEventHandler('qb-illegaltuner:client:openStance', function(veh)
+-- Which property is selected (1=height, 2=camberF, 3=camberR)
+local selectedProp = 1
+
+-- ─────────────────────────────────────────────
+--  EDITOR THREAD
+-- ─────────────────────────────────────────────
+
+local function OpenStanceEditor(veh)
     if stanceActive then return end
     stanceActive = true
+    selectedProp = 1
 
-    -- Seed from vehicle's CURRENT persisted stance (not 0.0)
-    local camber     = 0.0
-    local rideHeight = GetVehicleHandlingFloat(veh, 'CHandlingData', 'fSuspensionRaise') or 0.0
-    local wheelDist  = 0.0
-    -- Try to read current wheel camber from front-left
-    local existingCamber = GetVehicleWheelCamber(veh, 0)
-    if existingCamber then camber = -existingCamber end  -- stored as negative on wheel 0
-    local existingDist = GetVehicleWheelYOffset(veh, 0)
-    if existingDist then wheelDist = existingDist end
+    local cfg = Config.StanceKit
 
-    local originalCamber     = camber
-    local originalRideHeight = rideHeight
-    local originalWheelDist  = wheelDist
+    local function DisableConflicts()
+        DisableControlAction(0, 172, true)
+        DisableControlAction(0, 173, true)
+        DisableControlAction(0, 174, true)
+        DisableControlAction(0, 175, true)
+        DisableControlAction(0, 191, true)
+        DisableControlAction(0, 194, true)
+    end
 
-    QBCore.Functions.Notify(Lang:t('stance_mode'), 'primary', 5000)
+    UI_OpenStance()
+    UI_UpdateStance(selectedProp, stanceHeight, stanceCamberF, stanceCamberR)
+    QBCore.Functions.Notify('~y~Stance editor open~w~ — arrow keys to adjust, ENTER to save', 'primary', 5000)
 
     CreateThread(function()
         while stanceActive do
             Wait(0)
-            DrawHUD(camber, rideHeight, wheelDist)
+            DisableConflicts()
 
-            local shift = IsControlPressed(0, 21)
-
-            -- Ride height ↑↓
-            if IsControlJustPressed(0, 172) and not shift then
-                rideHeight = Clamp(rideHeight + Config.StanceKit.rideHeightStep, Config.StanceKit.rideHeightMin, Config.StanceKit.rideHeightMax)
-                ApplyStance(veh, camber, rideHeight, wheelDist)
-            elseif IsControlJustPressed(0, 173) and not shift then
-                rideHeight = Clamp(rideHeight - Config.StanceKit.rideHeightStep, Config.StanceKit.rideHeightMin, Config.StanceKit.rideHeightMax)
-                ApplyStance(veh, camber, rideHeight, wheelDist)
+            -- ↑↓ — cycle selected property
+            if IsDisabledControlJustPressed(0, 172) then
+                selectedProp = (selectedProp == 1) and 3 or (selectedProp - 1)
+                UI_UpdateStance(selectedProp, stanceHeight, stanceCamberF, stanceCamberR)
+            elseif IsDisabledControlJustPressed(0, 173) then
+                selectedProp = (selectedProp == 3) and 1 or (selectedProp + 1)
+                UI_UpdateStance(selectedProp, stanceHeight, stanceCamberF, stanceCamberR)
             end
 
-            -- Camber ←→
-            if IsControlJustPressed(0, 174) and not shift then
-                camber = Clamp(camber - Config.StanceKit.camberStep, Config.StanceKit.camberMin, Config.StanceKit.camberMax)
-                ApplyStance(veh, camber, rideHeight, wheelDist)
-            elseif IsControlJustPressed(0, 175) and not shift then
-                camber = Clamp(camber + Config.StanceKit.camberStep, Config.StanceKit.camberMin, Config.StanceKit.camberMax)
-                ApplyStance(veh, camber, rideHeight, wheelDist)
+            local step = (selectedProp == 1) and cfg.rideHeightStep or cfg.camberStep
+            local mn   = (selectedProp == 1) and cfg.rideHeightMin  or cfg.camberMin
+            local mx   = (selectedProp == 1) and cfg.rideHeightMax  or cfg.camberMax
+
+            if IsControlPressed(0, 21) then step = step * 10 end
+
+            local changed = false
+            if IsDisabledControlJustPressed(0, 174) then
+                if selectedProp == 1 then
+                    stanceHeight  = Clamp(stanceHeight  - step, mn, mx)
+                elseif selectedProp == 2 then
+                    stanceCamberF = Clamp(stanceCamberF - step, mn, mx)
+                else
+                    stanceCamberR = Clamp(stanceCamberR - step, mn, mx)
+                end
+                changed = true
+            elseif IsDisabledControlJustPressed(0, 175) then
+                if selectedProp == 1 then
+                    stanceHeight  = Clamp(stanceHeight  + step, mn, mx)
+                elseif selectedProp == 2 then
+                    stanceCamberF = Clamp(stanceCamberF + step, mn, mx)
+                else
+                    stanceCamberR = Clamp(stanceCamberR + step, mn, mx)
+                end
+                changed = true
             end
 
-            -- Wheel dist SHIFT+←→
-            if IsControlJustPressed(0, 174) and shift then
-                wheelDist = Clamp(wheelDist - Config.StanceKit.wheelDistStep, Config.StanceKit.wheelDistMin, Config.StanceKit.wheelDistMax)
-                ApplyStance(veh, camber, rideHeight, wheelDist)
-            elseif IsControlJustPressed(0, 175) and shift then
-                wheelDist = Clamp(wheelDist + Config.StanceKit.wheelDistStep, Config.StanceKit.wheelDistMin, Config.StanceKit.wheelDistMax)
-                ApplyStance(veh, camber, rideHeight, wheelDist)
+            if changed then
+                ApplyStance(veh, stanceCamberF, stanceCamberR, stanceHeight)
+                UI_UpdateStance(selectedProp, stanceHeight, stanceCamberF, stanceCamberR)
             end
 
             -- ENTER — save
-            if IsControlJustPressed(0, 191) then
+            if IsDisabledControlJustPressed(0, 191) then
                 stanceActive = false
-                ApplyStance(veh, camber, rideHeight, wheelDist)
-                -- Persist to DB
+                ApplyStance(veh, stanceCamberF, stanceCamberR, stanceHeight)
                 TriggerServerEvent('qb-illegaltuner:server:saveStance',
-                    NetworkGetNetworkIdFromEntity(veh), camber, rideHeight, wheelDist)
+                    NetworkGetNetworkIdFromEntity(veh),
+                    stanceCamberF, stanceCamberR, stanceHeight)
+                UI_CloseStance()
                 QBCore.Functions.Notify(Lang:t('stance_saved'), 'success', 3000)
             end
 
-            -- BACKSPACE — cancel, restore original
-            if IsControlJustPressed(0, 194) then
+            -- BACKSPACE — cancel
+            if IsDisabledControlJustPressed(0, 194) then
                 stanceActive = false
-                ApplyStance(veh, originalCamber, originalRideHeight, originalWheelDist)
+                ClearStance(veh)
+                UI_CloseStance()
                 QBCore.Functions.Notify(Lang:t('stance_cancelled'), 'error', 3000)
-            end
-
-            -- ESC — ask for confirmation before exiting without saving
-            if IsControlJustPressed(0, 322) then
-                stanceActive = false  -- pause the loop temporarily
-                lib.alertDialog({
-                    header   = 'Exit Stance Mode',
-                    content  = 'You have unsaved changes. What would you like to do?',
-                    centered = true,
-                    cancel   = true,
-                    labels   = { confirm = 'Save & Exit', cancel = 'Discard & Exit' },
-                }, function(confirmed)
-                    if confirmed then
-                        ApplyStance(veh, camber, rideHeight, wheelDist)
-                        TriggerServerEvent('qb-illegaltuner:server:saveStance',
-                            NetworkGetNetworkIdFromEntity(veh), camber, rideHeight, wheelDist)
-                        QBCore.Functions.Notify(Lang:t('stance_saved'), 'success', 3000)
-                    else
-                        ApplyStance(veh, originalCamber, originalRideHeight, originalWheelDist)
-                        QBCore.Functions.Notify(Lang:t('stance_cancelled'), 'error', 3000)
-                    end
-                end)
-                -- stanceActive remains false — loop has exited
             end
         end
     end)
+end
+
+-- ─────────────────────────────────────────────
+--  EVENTS
+-- ─────────────────────────────────────────────
+
+AddEventHandler('qb-illegaltuner:client:openStance', function(veh)
+    if not veh or not DoesEntityExist(veh) then
+        QBCore.Functions.Notify('Vehicle not found.', 'error', 3000)
+        return
+    end
+    stanceHeight  = GetVehicleHandlingFloat(veh, 'CHandlingData',    'fSuspensionRaise') or 0.0
+    stanceCamberF = GetVehicleHandlingFloat(veh, 'CCarHandlingData', 'fCamberFront')     or 0.0
+    stanceCamberR = GetVehicleHandlingFloat(veh, 'CCarHandlingData', 'fCamberRear')      or 0.0
+    OpenStanceEditor(veh)
 end)
 
--- Apply stance from DB values (called on spawn/load)
-AddEventHandler('qb-illegaltuner:client:applyStance', function(veh, camber, height, wheeldist)
+AddEventHandler('qb-illegaltuner:client:applyStance', function(veh, camberF, height, camberR)
     if not veh or not DoesEntityExist(veh) then return end
-    ApplyStance(veh, camber or 0.0, height or 0.0, wheeldist or 0.0)
+    stanceCamberF = camberF or 0.0
+    stanceCamberR = camberR or 0.0
+    stanceHeight  = height  or 0.0
+    ApplyStance(veh, stanceCamberF, stanceCamberR, stanceHeight)
 end)
 
--- Remove stance (reset to default)
 AddEventHandler('qb-illegaltuner:client:stanceRemoved', function(veh)
     if not veh or not DoesEntityExist(veh) then return end
+    stanceActive  = false
+    stanceCamberF = 0.0
+    stanceCamberR = 0.0
+    stanceHeight  = 0.0
     ClearStance(veh)
 end)

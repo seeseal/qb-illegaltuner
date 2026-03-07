@@ -5,7 +5,7 @@ Config = {}
 -- ─────────────────────────────────────────────
 Config.RequiredJob      = 'tuner'
 Config.PDJob            = 'police'   -- job allowed to use /removechip
-Config.PaymentType      = 'black_money'
+Config.PaymentType      = 'dirty_cash'
 Config.ZoneRadius       = 8.0
 Config.ProgressBar      = true
 
@@ -14,10 +14,8 @@ Config.ProgressBar      = true
 --  anyone can view prices, tuner job required to install
 -- ─────────────────────────────────────────────
 Config.RampLocations = {
-    vector3(0.0, 0.0, 0.0), -- ramp 1
-    vector3(0.0, 0.0, 0.0), -- ramp 2
-    vector3(0.0, 0.0, 0.0), -- ramp 3
-    vector3(0.0, 0.0, 0.0), -- ramp 4
+    vector3(-323.29, -132.12, 38.96), -- ramp 1
+   
 }
 Config.RampRadius = 8.0
 
@@ -31,11 +29,11 @@ Config.DiscordColour  = 16711680  -- red
 --  ENGINE CHIP
 -- ─────────────────────────────────────────────
 Config.EngineChip = {
-    installMs       = 10000,
-    removeMs        = 8000,
-    speedBoostMPH   = 15,
-    basePrice       = 250000,
-    carValuePercent = 0.30,   -- price = basePrice + (depotvalue * 30%)
+    installMs          = 10000,
+    removeMs           = 8000,
+    speedBoostPercent  = 15,     -- % increase to fInitialDriveMaxFlatVel
+    basePrice          = 250000,
+    carValuePercent    = 0.30,   -- price = basePrice + (depotvalue * 30%)
 }
 
 -- ─────────────────────────────────────────────
@@ -46,8 +44,11 @@ Config.DriftChip = {
     carValuePercent    = 0.20,   -- price = basePrice + (depotvalue * 20%)
     installMs          = 6000,
     removeMs           = 5000,
-    tractionMultiplier = 1.45,
     suspensionLevel    = 2,
+    tractionMultiplier = 0.80,   -- traction curves scaled to 80% (20% less grip)
+    tractionLossMult   = 1.60,   -- high loss multiplier = more oversteer/slide
+    dragCoeff          = 8.0,    -- higher drag coeff = more tyre resistance / smoke
+    baseDragCoeff      = 4.0,    -- stock value to restore on removal
 }
 
 -- ─────────────────────────────────────────────
@@ -59,10 +60,8 @@ Config.StanceKit = {
     removeMs       = 5000,
     camberStep     = 0.01,
     rideHeightStep = 0.005,
-    wheelDistStep  = 0.005,
-    camberMin      = -0.20,  camberMax     = 0.20,
-    rideHeightMin  = -0.10,  rideHeightMax = 0.10,
-    wheelDistMin   = -0.10,  wheelDistMax  = 0.10,
+    camberMin      = -0.20,  camberMax     = 0.10,   -- negative = inward lean (stance look)
+    rideHeightMin  = -0.085, rideHeightMax = 0.10,   -- negative = lowered
 }
 
 -- ─────────────────────────────────────────────
@@ -74,9 +73,20 @@ Config.Nitrous = {
     installMs     = 9000,
     removeMs      = 7000,
     boostMPH      = 10,
-    boostDuration = 10,      -- seconds active
-    cooldown      = 1800,    -- 30 minutes in seconds
-    key           = 321,     -- LEFT SHIFT
+    boostDuration = 5,       -- seconds active
+    cooldown      = 1800,    -- seconds before refill is allowed again (30 min)
+    key           = 21,      -- LEFT SHIFT
+}
+
+-- ─────────────────────────────────────────────
+--  NOS REFILL STATION  (dedicated location)
+--  Players drive here to refill their NOS kit.
+--  Set this to a spot near a garage / back alley.
+-- ─────────────────────────────────────────────
+Config.NosRefillStation = {
+    coords   = vector3(-359.06, -122.33, 38.06),
+    radius   = 6.0,
+    refillMs = 5000,
 }
 
 -- ─────────────────────────────────────────────

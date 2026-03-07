@@ -11,10 +11,10 @@ local Translations = {
     ['slow_down']         = 'Slow down!',
     ['access_denied']     = 'Access denied.',
     ['press_open']        = 'Press ~INPUT_CONTEXT~ to open Tuner Shop',
-    ['no_funds']          = "%s doesn't have enough black money! ($%d needed)",
+    ['no_funds']          = "%s doesn't have enough dirty cash! ($%d needed)",
 
     -- Engine Chip
-    ['engine_chip_installed']     = '+%d MPH engine chip installed! 🏎️',
+    ['engine_chip_installed']     = '+%d%% top speed chip installed! 🏎️',
     ['engine_chip_already']       = 'This vehicle already has an engine chip installed.',
     ['engine_chip_conflict']      = 'Remove the drift chip before installing an engine chip.',
     ['engine_chip_removed']       = 'Engine chip removed.',
@@ -41,9 +41,14 @@ local Translations = {
     ['nos_activated']             = '🚀 NOS ACTIVATED!',
     ['nos_refilled']              = 'NOS refilled and ready! 🚀',
     ['nos_not_installed']         = 'No NOS kit installed on this vehicle.',
-    ['nos_no_refill_here']        = 'Return to the tuner shop to refill your NOS.',
-    ['nos_cooldown']              = 'NOS is cooling down.',
+    ['nos_no_refill_here']        = 'NOS is empty — drive to the refill station.',
+    ['nos_cooldown']              = 'NOS refill on cooldown. %d min remaining.',
     ['nos_removed']               = 'NOS kit removed.',
+    ['nos_empty']                 = '⚠️ NOS is empty — head to the refill station!',
+    ['nos_station_press']         = 'Press ~INPUT_CONTEXT~ to refill NOS · $%s',
+    ['nos_station_no_nos']        = 'Your vehicle has no NOS kit installed.',
+    ['nos_station_not_empty']     = 'Your NOS is still charged — no refill needed.',
+    ['nos_station_refilling']     = 'Refilling NOS...',
 
     -- Neon
     ['neon_set']                  = '%s neon set to %s! 💡',
